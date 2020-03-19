@@ -85,15 +85,9 @@ namespace BugTracker.Views
 
             if (project == null)
                 return HttpNotFound();
-            var userId = User.Identity.GetUserId();
-            
-            //check if developer is on project
-            if (User.IsInRole(RoleNames.Developer) && !DeveloperAuthorized(project.Id, userId))
-                return HttpNotFound();
-            
-            //check if manager is over project
-            if (User.IsInRole(RoleNames.ProjectManager) && project.ManagerId != userId)
-                return HttpNotFound();
+
+            if (!UserOnProject(project))
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
 
             if (resolved)
                 ViewBag.Title = "Resolved ";
@@ -114,26 +108,15 @@ namespace BugTracker.Views
         public ActionResult Details(int? id)
         {
             if (id == null)
-            {
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
-            }
-            
+
             Issue issue = db.Issues.Include(model => model.Project.Manager).Single( i => i.Id == id);
             
             if (issue == null)
-            {
                 return HttpNotFound();
-            }
             
-            var userId = User.Identity.GetUserId();
-            
-            //developer on project
-            if (User.IsInRole(RoleNames.Developer) && !DeveloperAuthorized(issue.ProjectId, userId))
-               return HttpNotFound();
-
-            //manager on project
-            if (User.IsInRole(RoleNames.ProjectManager) && issue.Project.ManagerId != userId)
-                return HttpNotFound();
+            if (!UserOnProject(issue))
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
 
             return View(issue);
         }
@@ -150,15 +133,9 @@ namespace BugTracker.Views
             
             if (issue == null)
                 return HttpNotFound();
-            var userId = User.Identity.GetUserId();
-            
-            //developer on project
-            if (User.IsInRole(RoleNames.Developer) && !DeveloperAuthorized(issue.ProjectId, userId))
-                return HttpNotFound();
-
-            //manager on project
-            if (User.IsInRole(RoleNames.ProjectManager) && issue.Project.ManagerId != userId)
-                return HttpNotFound();
+           
+            if (!UserOnProject(issue))
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
 
             issue.Resolved = true;
             issue.DateUpdated = DateTime.Today;
@@ -166,14 +143,14 @@ namespace BugTracker.Views
             return RedirectToAction("Index");
         }
         // GET: Issues/Create
-        public ActionResult Create(int id)
+        public ActionResult Create(int? id)
         {
             if (id == null)
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
 
             var issue = new Issue()
             {
-                ProjectId = id
+                ProjectId = (int)id
             };
             return View(issue);
         }
@@ -187,28 +164,8 @@ namespace BugTracker.Views
         {
             if (ModelState.IsValid)
             {
-                if (User.IsInRole(RoleNames.Developer + ',' + RoleNames.ProjectManager))
-                {
-                    //if project exists where user is manager or a developer
-                    var userId = User.Identity.GetUserId();
-                    var projectdev = db.ProjectDevelopers.Where(
-                        model => model.ProjectId == issue.ProjectId &&
-                                (
-                                model.Project.ManagerId == userId
-                             || model.DeveloperId == userId)
-                                );
-                    if (projectdev == null)
-                        return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
-                }
-
-                //else the user is Admin
-                else
-                {
-                    var project = db.Projects.SingleOrDefault(model => model.Id == issue.ProjectId);
-                    if (project == null)
-                        return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
-                }
-                
+                if (!UserOnProject(issue))
+                    return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
 
                 issue.CreatedById = User.Identity.GetUserId();
                 issue.DateCreated = DateTime.Today;
@@ -225,14 +182,12 @@ namespace BugTracker.Views
         public ActionResult Edit(int? id)
         {
             if (id == null)
-            {
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
-            }
+            
             Issue issue = db.Issues.Find(id);
             if (issue == null)
-            {
                 return HttpNotFound();
-            }
+            
             return View(issue);
         }
 
@@ -241,10 +196,13 @@ namespace BugTracker.Views
         // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Edit([Bind(Include = "Id,Name,Description,Priority,DateCreated,DateUpdated,Resolved")] Issue issue)
+        public ActionResult Edit(Issue issue)
         {
             if (ModelState.IsValid)
             {
+                if (!UserOnProject(issue))
+                    return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+
                 issue.DateUpdated = DateTime.Today;
                 issue.DateCreated = (DateTime)issue.DateCreated;
                 db.Entry(issue).State = EntityState.Modified;
@@ -258,14 +216,13 @@ namespace BugTracker.Views
         public ActionResult Delete(int? id)
         {
             if (id == null)
-            {
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
-            }
+            
             Issue issue = db.Issues.Find(id);
+            
             if (issue == null)
-            {
                 return HttpNotFound();
-            }
+            
             return View(issue);
         }
 
@@ -275,6 +232,9 @@ namespace BugTracker.Views
         public ActionResult DeleteConfirmed(int id)
         {
             Issue issue = db.Issues.Find(id);
+            if (!UserOnProject(issue))
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            
             db.Issues.Remove(issue);
             db.SaveChanges();
             return RedirectToAction("Index");
@@ -288,17 +248,52 @@ namespace BugTracker.Views
             return View("Index", db.Issues.Where(model => model.Resolved == true).OrderBy(model => model.DateCreated).ToList());
         }
 
- 
 
-        //Check if user has access to project
-        private bool DeveloperAuthorized(int projectId, string userId)
+        private bool UserOnProject(Project project)
         {
-            var ProjDev = db.ProjectDevelopers.SingleOrDefault(model => model.ProjectId == projectId
+            var userId = User.Identity.GetUserId();
+
+            //check if developer is on project
+            if (User.IsInRole(RoleNames.Developer))
+            {
+                var ProjDev = db.ProjectDevelopers.SingleOrDefault(model => model.ProjectId == project.Id
                 && model.DeveloperId == userId);
-            
-            if (ProjDev == null)
+
+                if (ProjDev == null)
+                    return false;
+            }
+                
+            //check if manager is over project
+            else if (User.IsInRole(RoleNames.ProjectManager) && project.ManagerId != userId)
                 return false;
-            
+
+            //user on project or admin
+            return true;
+        }
+        private bool UserOnProject(Issue issue)
+        {
+            //returns false if project does not exist or user not on project
+            if (User.IsInRole(RoleNames.Developer + ',' + RoleNames.ProjectManager))
+            {
+                //if project exists where user is manager or a developer
+                var userId = User.Identity.GetUserId();
+                var projectdev = db.ProjectDevelopers.Where(
+                    model => model.ProjectId == issue.ProjectId &&
+                            (
+                            model.Project.ManagerId == userId
+                         || model.DeveloperId == userId)
+                            );
+                if (projectdev == null)
+                    return false;
+            }
+            //else the user is Admin
+            else
+            {
+                var project = db.Projects.SingleOrDefault(model => model.Id == issue.ProjectId);
+                if (project == null)
+                    return false;
+            }
+ 
             return true;
         }
 

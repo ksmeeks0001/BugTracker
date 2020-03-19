@@ -112,7 +112,7 @@
 </div>
 <p>
     @Html.ActionLink("Update", "Edit", new { id = Model.Id }) |
-    @Html.ActionLink("Return to List", "Index")
+    @Html.ActionLink("Return to List", "ProjectView", new { id = Model.ProjectId, resolved = false})
 </p>
 
 <script>
