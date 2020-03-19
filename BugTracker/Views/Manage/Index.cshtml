@@ -1,0 +1,86 @@
+﻿@model BugTracker.Models.IndexViewModel
+@{
+    ViewBag.Title = "Manage";
+}
+
+
+
+<p class="text-success">@ViewBag.StatusMessage</p>
+<div class="container">
+    <h4>Change your account settings</h4>
+    <div class="row" style="height: 10%">
+        <div class="col">
+            <div class="card border-primary mb-3" style="height: 100%">
+                <div class="card-header">Login</div>
+                <div class="card-body">
+                    @if (Model.HasPassword)
+                    {
+                        <p>@Html.ActionLink("Change your password", "ChangePassword")</p>
+                    }
+                    else
+                    {
+                        <p>@Html.ActionLink("Create", "SetPassword")</p>
+                    }
+                    <p>@Html.ActionLink("External Accounts", "ManageLogins")</p>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card border-info mb-3" style="height: 100%">
+                <div class="card-header">Personal Info</div>
+                <div class="card-body">
+                    @if (Model.PhoneNumber != null)
+                    {
+                        <p>@Html.ActionLink("Update Phone Number", "AddPhoneNumber")</p>
+                        using (Html.BeginForm("RemovePhoneNumber", "Manage", FormMethod.Post, new { @class = "form-horizontal", role = "form" }))
+                        {
+                            @Html.AntiForgeryToken()
+                        <input type="submit" value="Remove Phone Number" class="btn-link col-xs-11 text-left" style="border: none; padding-left: 0; background-color: rgba(0,0,0,0.03);"/>
+                        }
+                    }
+                    else
+                    {
+                        <p>@Html.ActionLink("Add Phone Number", "AddPhoneNumber")</p>
+                        <p></p>
+                    }
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+        @*
+            Phone Numbers can used as a second factor of verification in a two-factor authentication system.
+
+             See <a href="https://go.microsoft.com/fwlink/?LinkId=403804">this article</a>
+                for details on setting up this ASP.NET application to support two-factor authentication using SMS.
+
+             Uncomment the following block after you have set up two-factor authentication
+        *@
+        @*
+            <dt>Phone Number:</dt>
+            <dd>
+                @(Model.PhoneNumber ?? "None")
+                
+            </dd>
+        *@
+            @*@if (Model.TwoFactor)
+                {
+                    using (Html.BeginForm("DisableTwoFactorAuthentication", "Manage", FormMethod.Post, new { @class = "form-horizontal", role = "form" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <text>Enabled
+                        <input type="submit" value="Disable" class="btn btn-link" />
+                        </text>
+                    }
+                }
+                else
+                {
+                    using (Html.BeginForm("EnableTwoFactorAuthentication", "Manage", FormMethod.Post, new { @class = "form-horizontal", role = "form" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        <text>Disabled
+                        <input type="submit" value="Enable" class="btn btn-link" />
+                        </text>
+                    }
+                }*@
+</div>

@@ -1,0 +1,18 @@
+﻿@model BugTracker.Models.Issue
+
+@{
+    ViewBag.Title = "Create";
+}
+
+<h4>New Issue</h4>
+
+@Html.Partial("_IssueFormPartial")
+
+
+<div>
+    @Html.ActionLink("Return to List", "ProjectView", new { id = Model.ProjectId})
+</div>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}

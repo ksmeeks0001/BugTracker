@@ -1,0 +1,14 @@
+﻿@model Int32
+
+@if (Model == 1)
+{
+    <span class="badge badge-danger">High Priority</span>
+}
+else if (Model == 2)
+{
+    <span class="badge badge-warning">Mid Priority</span>
+}
+else if (Model == 3)
+{
+    <span class="badge badge-pill badge-info">Low Priority</span>
+}

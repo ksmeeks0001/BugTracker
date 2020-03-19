@@ -1,0 +1,36 @@
+﻿@model IEnumerable<BugTracker.Models.Project>
+
+@{
+    ViewBag.Title = "Index";
+}
+
+<h2>My Projects</h2>
+
+
+<table class="table">
+    <tr class="table-primary">
+        <th>
+            @Html.DisplayNameFor(model => model.Name)
+        </th>
+        <th>Open Issues</th>
+        <th></th>
+    </tr>
+        
+@foreach (var item in Model) {
+    <tr class="table-secondary">
+        <td>
+            @Html.ActionLink(item.Name, "Details",
+               new { id = item.Id, resolved = false }, new { })
+        </td>
+        <td>
+            @item.Issues.Where(model => model.Resolved == false).Count()
+            @Html.ActionLink("Issues", "ProjectView", "Issues",
+                new { id = item.Id, Resolved = false }, new { })
+        </td>
+        <td>
+            @Html.ActionLink("Edit", "Edit", new { id = item.Id })
+        </td>
+    </tr>
+}
+
+</table>

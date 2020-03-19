@@ -1,0 +1,45 @@
+﻿@model IEnumerable<BugTracker.Models.PendingRegistration>
+
+@{
+    ViewBag.Title = "PendingUsers";
+}
+    <div class="row">
+        <div class="col-md-4">
+            <h4>Pending Users</h4>
+        </div>
+        <div class="col-md-4">
+            @Html.ActionLink("Add User", "AddUser", "Account")
+        </div>
+    </div>
+
+        <table class="table">
+            <tr class="table-primary">
+                <th>
+                    @Html.DisplayNameFor(model => model.Email)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.Role)
+                </th>
+                <th></th>
+                <th></th>
+            </tr>
+
+            @foreach (var item in Model)
+            {
+                <tr class="table-secondary">
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Email)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Role)
+                    </td>
+                    <td>
+                        @Html.ActionLink("Resend Registration Link", "SendRegistration", "Account")
+                    </td>
+                    <td>
+                        <button class="btn btn-link">Delete</button>
+                    </td>
+                </tr>
+            }
+
+        </table>

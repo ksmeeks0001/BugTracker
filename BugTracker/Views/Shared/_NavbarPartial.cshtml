@@ -1,0 +1,17 @@
+﻿<div class="navbar navbar-expand-sm navbar-dark fixed-top bg-dark">
+    <div class="container">
+        <div class="navbar-header">
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            @Html.ActionLink("Issue Tracking", "Index", "Home", new { area = "" }, new { @class = "navbar-brand" })
+        </div>
+        <div class="navbar-collapse collapse" id="navbarSupportedContent">
+            <ul class="nav navbar-nav mr-auto">
+                <li>@Html.ActionLink("Current Issues", "Index", "Issues",new { area = "" }, new { @class = "nav-item" })</li>
+                
+            </ul>
+            @Html.Partial("_LoginPartial")
+        </div>
+    </div>
+</div>

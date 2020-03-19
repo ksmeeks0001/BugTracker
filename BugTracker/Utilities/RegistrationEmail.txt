@@ -1,0 +1,4 @@
+﻿Welcome to the team!
+
+Please complete your registration here
+https://localhost:44354/account/register/

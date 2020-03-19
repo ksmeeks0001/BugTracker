@@ -1,0 +1,184 @@
+﻿@model BugTracker.Models.Issue
+
+@{
+    ViewBag.Title = "Details";
+}
+
+<div>
+    <h4>
+        @Html.ValueFor(model => model.Project.Name) : @Html.ValueFor(model => model.Name)
+    </h4>
+    <span>
+        @Html.DisplayFor(model => model.Priority, "_PriorityBadge")
+    </span>
+    <br />
+    <span>
+        @Html.DisplayFor(model => model.Resolved, "_ResolvedBadge")
+    </span>
+</div>
+<div class="alert alert-dismissible alert-secondary" id="dateSection">
+    <div class="row">
+        <div class="col">
+            <p>
+                @Html.DisplayNameFor(model => model.Project.Manager):
+                <a href="mailto: @Model.Project.Manager.Email?subject=@Model.Project.Name:@Model.Name">
+                    @Html.DisplayFor(model => model.Project.Manager.Email)</a>
+            </p>
+        </div>
+    </div>
+    <div class="row">
+    <div class="col-sm-6">
+        <p>
+            @Html.DisplayNameFor(model => model.DateCreated) :
+
+            @Html.DisplayFor(model => model.DateCreated)
+        </p>
+    </div>
+    <div class="col-sm-6">
+        <p id="dateUpdated">
+            @if (Model.DateUpdated != null)
+            {
+                @Html.DisplayNameFor(model => model.DateUpdated) <span>:</span>
+                @Html.DisplayFor(model => model.DateUpdated)
+            }
+        </p>
+    </div>
+    </div>
+</div>
+
+<div>
+    <hr />
+    <div class="alert alert-primary">
+        <p class="mb-0">@Html.DisplayFor(model => model.Description)</p>
+    </div>
+</div>
+
+@if (!Model.Resolved)
+{
+    <div class="modal" id="AddNote">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Note</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <textarea id="Content" cols="50" rows="6"></textarea>
+                    <p class="text-danger" style="display: none;" id="contentValidate">Please enter note text</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-success" id="submitNote" data-toggle="modal" data-target="#AddNote">Add</button>
+                    <button type="button" class="btn btn-outline-danger" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+}
+<div id="notes">
+    <h5>Notes</h5>
+
+</div>
+@if (!Model.Resolved)
+{
+    <button type="button" class="btn btn-secondary" style="margin-bottom: 10px;" data-toggle="modal" data-target="#AddNote">Add Note</button>
+
+    <form method="post" action="/issues/MarkResolved" style="display: inline;">
+        @Html.AntiForgeryToken()
+        @Html.HiddenFor(model => Model.Id)
+        <button type="submit" class="btn btn-success" style="margin-bottom: 10px;">Mark Resolved</button>
+    </form>
+}
+<div class="modal" id="confirmDelete">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Do you want to permanently delete this note?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-dismiss="modal" id="deleteConfirmed">Yes</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">No</button>
+            </div>
+        </div>
+    </div>
+</div>
+<p>
+    @Html.ActionLink("Update", "Edit", new { id = Model.Id }) |
+    @Html.ActionLink("Return to List", "Index")
+</p>
+
+<script>
+
+    window.onload = function () {
+
+        //DELETE a note
+        deleteNote = function (noteId) {
+            $.ajax({
+                url: "/api/notes/" + noteId,
+                type: "DELETE",
+                    success: function(data, status) {
+                        //alert("deleted");
+                        $("#note" + noteId).remove();
+                    }
+            });
+        }
+        confirmDelete = function (noteId) {
+            var delBtn = $("#deleteConfirmed");
+            delBtn.onclick = deleteNote(noteId);
+        }
+        addNote = function (data) {
+            var notes = $("#notes");
+            notes.append(
+                "<div id='note" + data.Id +"' class='alert alert-info'>" +
+                "<button type='button' class='close btn btn-danger btn-sm'" +
+                "data-toggle='modal' data-target='#confirmDelete' onclick=confirmDelete(" + data.Id + ")>&times</button > " +
+                "<p>" + new Date(data.DateCreated).toLocaleDateString() + "</p>" +
+                data.Content +
+                "</div>"
+            );
+        }
+        $.get("/api/issues/" + $("#Id").val(), function (data, status) {
+            //console.log(data);
+            for (let i = 0; i < data.Notes.length; i++) {
+                addNote(data.Notes[i]);
+            }                
+        });
+
+
+
+        //POST a new note
+        $("#submitNote").click(function () {
+            var form_data = {
+               // __RequestVerificationToken: $("input[name='__RequestVerificationToken']").val(),
+                Content: $("#Content").val(),
+                IssueId: $("#Id").val()
+            };
+            $.post("/api/Notes", form_data, function (data, status) {
+                //console.log(data);
+                addNote(data);
+                document.getElementById("dateUpdated").innerText = "Date Updated: " + new Date(data.DateCreated).toLocaleDateString();
+                $("#contentValidate").hide();
+                $("#Content").val("");
+            });
+        });
+        $(document).ajaxError(function (event, request, settings) {
+            if (settings.url == "api/Notes") {
+                $("#contentValidate").show();
+
+            }
+        })
+    }
+</script>
+<style>
+    #dateSection {
+        margin-top: 2%;
+    }
+</style>

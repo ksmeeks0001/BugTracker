@@ -1,0 +1,49 @@
+﻿@model BugTracker.ViewModels.AddUserViewModel
+@{
+    ViewBag.Title = "Add User";
+}
+<div class="row">
+    <div class="col-md-4">
+        <h4>@ViewBag.Title</h4>
+    </div>
+    <div class="col-md-4">
+        @Html.ActionLink("View Pending Users", "PendingUsers", "Admin")
+    </div>
+</div>
+
+
+@using (Html.BeginForm("AddUser", "Account", FormMethod.Post, new { @class = "form-horizontal", role = "form" }))
+{
+    @Html.AntiForgeryToken()
+    <hr />
+    <div class="form-group">
+        @Html.LabelFor(m => m.Email, new { @class = "col-md-2 control-label" })
+        <div class="col-md-10">
+            @Html.TextBoxFor(m => m.Email, new { @class = "form-control" })
+            @Html.ValidationMessageFor(m => m.Email)
+        </div>
+    </div>
+    <div class="form-group">
+        @Html.LabelFor(m => m.ConfirmEmail, new { @class = "col-md-2 control-label" })
+        <div class="col-md-10">
+            @Html.TextBoxFor(m => m.ConfirmEmail, new { @class = "form-control" })
+            @Html.ValidationMessageFor(m => m.ConfirmEmail)
+        </div>
+    </div>
+    <div class="form-group">
+        @Html.LabelFor(m => m.Role, new { @class = "col-md-2 control-label" })
+        <div class="col-md-10">
+            @Html.DropDownListFor(m => m.Role, new SelectList(Model.RoleOptions, "Name", "Name"), "Select Role")
+            <p>@Html.ValidationMessageFor(m => m.Role)</p>
+        </div>
+    </div>
+    <div class="form-group">
+        <div class="col-md-offset-2 col-md-10">
+            <input type="submit" class="btn btn-default" value="Register" />
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}
