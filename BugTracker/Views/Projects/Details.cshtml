@@ -4,26 +4,221 @@
     ViewBag.Title = "Details";
 }
 
-<div>
-    <h4>@Html.DisplayFor(model => model.Name)</h4>
-    <hr />
-    <dl class="dl-horizontal">
-        <dt>
-            @Html.DisplayNameFor(model => model.Manager)
-        </dt>
+    <div class="container">
 
-        <dd>
-            @Html.DisplayFor(model => model.Manager.Email)
-        </dd>
-        <dt>
-            @Html.DisplayNameFor(model => model.Details)
-        </dt>
-        <dd>
-            @Html.DisplayFor(model => model.Details)
-        </dd>
-    </dl>
-</div>
-<p>
-    @Html.ActionLink("Edit", "Edit", new { id = Model.Id }) |
-    @Html.ActionLink("Back to List", "Index")
-</p>
+        <h3>@Html.DisplayFor(model => model.Name)</h3>
+        @*Sub nav-bar*@
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link details" data-toggle="tab" href="#details">Details</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link developers" data-toggle="tab" href="#developers">Developers</a>
+            </li>
+            @*DROPDOWN MENU*@
+            <li class="dropdown">
+                <a id="dropdownLink" href="#" class="btn dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                Actions 
+                <span class="caret"></span></a>
+                <div class="dropdown-menu" aria-labelledby="dropdownLink">
+                    @Html.ActionLink("View Issues", "ProjectView", "Issues", new { id = Model.Id }, new { @class = "dropdown-item" })
+                    @Html.ActionLink("Add Developers", "AddDevelopers", new { id = Model.Id}, new { @class = "dropdown-item" } )
+                    @Html.ActionLink("Edit Details", "Edit", new { id = Model.Id }, new { @class = "dropdown-item" })
+                    <button type="button" class="btn btn-link dropdown-item" id="markCompleteDrop"
+                            data-toggle="modal" data-target="#markCompleteModal">
+                        Mark Completed
+                    </button>
+                </div>
+            </li>
+
+        </ul>
+        @*DETAILS*@
+        <div id="myTabContent" class="tab-content">
+            <div class="tab-pane fade active show" id="details">
+                <div class="alert alert-dismissible alert-secondary">
+                    <div class="row">
+                        <div class="col">
+                            <p class="card-text">@Html.DisplayNameFor(model => model.Manager): @Model.Manager.Email</p>
+                        </div>
+                        <div class="col">
+                            <p class="card-text">@Html.DisplayNameFor(model => model.DateStarted): @Model.DateStarted</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card text-white bg-primary mb-3">
+                    <div class="card-body">
+                        <p class="card-text">@Model.Details</p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <div class="card text-white bg-secondary border-info mb-3">
+                            <div class="row card-header">
+                                <div class="col">
+                                    <div>Open Issues</div>
+                                </div>
+                                <div class="col">
+                                    <div id="openIssues"></div>
+                                </div>
+                            </div>
+                            <div class="row card-body">
+                                <div class="col">
+                                    <p class="card-title">Low Priority</p>
+                                    <p class="card-text" id="lowPriority"></p>
+                                </div>
+                                <div class="col">
+                                    <p class="card-title">Mid Priority</p>
+                                    <p class="card-text" id="midPriority"></p>
+                                </div>
+                                <div class="col">
+                                    <p class="card-title">High Priority</p>
+                                    <p class="card-text" id="highPriority"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @*DEVELOPERS*@
+            <div class="tab-pane fade show" id="developers">
+                <div class="card text-white bg-info mb-3">
+                    <div class="card-body">
+                        <h4 class="card-title">Project Devs</h4>
+                        <div id="developerList" class="card-body">
+                            @*Add devolopers here*@
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @*Mark resolved Form *@
+        <div class="modal" id="markCompleteModal">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Mark Complete</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <form method="post" action="/projects/markcomplete">
+                        <div class="modal-body">
+                            <p>Project Finished?</p>
+                            @Html.HiddenFor(model => model.Id)
+                            @Html.AntiForgeryToken()
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-primary" id="markComplete">Mark Complete</button>
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        $(document).ready(function () {
+
+            var dropdownMenu = $(".dropdown-menu");
+            var devList = $("#developerList");
+            var projectId = $("#Id").val();
+            var devRows = 0;
+            var devCols = 0;
+
+            function toggleMenu() {
+                if (dropdownMenu.css("display") == "none")
+                    dropdownMenu.css("display", "block");
+                else
+                    dropdownMenu.css("display", "none")
+            }
+
+            function addDeveloper(dev) {
+
+                if (devCols === 0) {
+                    devRows += 1;
+                    devCols += 1;
+                    devList.append("<div id='devRow" + devRows + "' class='row'><div class='col'>" + dev + "</div></div>");
+                    devList.append()
+                }
+                else {
+                    $("#devRow" + devRows).append("<div class='col'>" + dev + "</div>")
+                    if (devCols === 1)
+                        devCols += 1;
+                    else {
+                        devCols = 0;
+                    }
+                }
+            }
+
+
+            $("#dropdownLink").click(function () {
+                toggleMenu();
+            });
+
+            //get project data for issues
+            $.get("/api/projects/" + projectId, function (data, status) {
+                var low = 0;  //priority 3
+                var mid = 0; //priority 2
+                var high = 0; //priority 1
+
+                if (status === "success") {
+
+                    for (let i = 0; i < data.Issues.length; i++) {
+
+                        if (data.Issues[i].Resolved === false) {
+
+                            switch (data.Issues[i].Priority) {
+                                case 1: high += 1;
+                                    break;
+                                case 2: mid += 1;
+                                    break;
+                                case 3: low += 1;
+                                    break;
+                                default: null;
+                            }
+                        }
+                    }
+                    $("#lowPriority").text(low);
+                    $("#midPriority").text(mid);
+                    $("#highPriority").text(high);
+                    $("#openIssues").text(low + mid + high);
+                }
+                else {
+                    $("#lowPriority").text(".");
+                    $("#midPriority").text(".");
+                    $("#highPriority").text(".");
+                    $("#openIssues").text(".");
+                }
+            });
+
+            //get developers on the project
+            $.get("/api/projectdevelopers/" + projectId, function (data, status) {
+                if (status == "success") {
+
+                    //write the rows and cols
+                    for (let i = 0; i < data.length; i++) {
+                        addDeveloper(data[i].Developer.UserName);
+                    }
+                }
+
+                else {
+                    alert("Failed to load developer list");
+                }
+            })
+
+        });
+
+    </script>
+<style>
+    .details {
+        background-color: #2A9FD6;
+    }
+    .developers {
+        background-color: #9933cc;
+    }
+     #developerList .row {
+        padding-bottom: 5%;
+    }
+
+     
+</style>

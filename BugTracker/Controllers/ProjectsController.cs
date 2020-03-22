@@ -6,8 +6,12 @@ using System.Linq;
 using System.Net;
 using System.Web;
 using System.Web.Mvc;
+using System.Web.Security;
 using BugTracker.Models;
+using BugTracker.ViewModels;
 using Microsoft.AspNet.Identity;
+using Microsoft.AspNet.Identity.EntityFramework;
+using Microsoft.AspNet.Identity.Owin;
 
 namespace BugTracker.Controllers
 {
@@ -52,16 +56,21 @@ namespace BugTracker.Controllers
             
             if (project == null)
                 return HttpNotFound();
-            //will probably need a view model here to display developers
 
          
             return View(project);
         }
 
         // GET: Projects/Create
+        [Authorize(Roles =RoleNames.Admin + "," + RoleNames.ProjectManager)]
         public ActionResult Create()
         {
-            ViewBag.ManagerId = new SelectList(db.Users, "Id", "Email");
+
+            //get Role = Project Manager
+            var managers = Utilities.Utilities.GetAllManagers(db);
+
+            ViewBag.ManagerId = new SelectList(managers, "Id", "UserName"); 
+
             return View();
         }
 
@@ -70,16 +79,18 @@ namespace BugTracker.Controllers
         // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Create([Bind(Include = "Id,Name,ManagerId")] Project project)
+        public ActionResult Create([Bind(Include = "Id,Name,Details,ManagerId")] Project project)
         {
             if (ModelState.IsValid)
             {
+                project.DateStarted = DateTime.Today;
+                project.Complete = false;
                 db.Projects.Add(project);
                 db.SaveChanges();
-                return RedirectToAction("Index");
+                return RedirectToAction("Details", new { id = project.Id });
             }
-
-            ViewBag.ManagerId = new SelectList(db.Users, "Id", "Email", project.ManagerId);
+            var managers = Utilities.Utilities.GetAllManagers(db);
+            ViewBag.ManagerId = new SelectList(managers, "Id", "Email", project.ManagerId);
             return View(project);
         }
 
@@ -95,16 +106,15 @@ namespace BugTracker.Controllers
             {
                 return HttpNotFound();
             }
-            ViewBag.ManagerId = new SelectList(db.Users, "Id", "Email", project.ManagerId);
+            var managers = Utilities.Utilities.GetAllManagers(db);
+            ViewBag.ManagerId = new SelectList(managers, "Id", "Email", project.ManagerId);
             return View(project);
         }
 
         // POST: Projects/Edit/5
-        // To protect from overposting attacks, please enable the specific properties you want to bind to, for 
-        // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Edit([Bind(Include = "Id,Name,ManagerId")] Project project)
+        public ActionResult Edit(Project project)
         {
             if (ModelState.IsValid)
             {
@@ -112,8 +122,80 @@ namespace BugTracker.Controllers
                 db.SaveChanges();
                 return RedirectToAction("Index");
             }
-            ViewBag.ManagerId = new SelectList(db.Users, "Id", "Email", project.ManagerId);
+            var managers = Utilities.Utilities.GetAllManagers(db);
+            ViewBag.ManagerId = new SelectList(managers, "Id", "Email", project.ManagerId);
             return View(project);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.ProjectManager)]
+        public ActionResult MarkComplete(int id)
+        {
+            var project = db.Projects.SingleOrDefault(p => p.Id == id);
+
+            if (project == null)
+                return HttpNotFound();
+            var userId = User.Identity.GetUserId();
+
+            if (User.IsInRole(RoleNames.ProjectManager) && project.ManagerId != userId )
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+
+            project.Complete = true;
+            db.SaveChanges();
+            return RedirectToAction("Index");
+        }
+
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.ProjectManager)]
+        public ActionResult AddDevelopers(int? id)
+        {
+            if (id == null)
+                return HttpNotFound();
+
+            //exclude devs already on project
+            var users = Utilities.Utilities.GetAllDevelopers(db).Where(model => !(from projectDev in db.ProjectDevelopers
+                                                                                 where projectDev.ProjectId == id
+                                                                                 select projectDev.DeveloperId).Contains(model.Id)
+                                                                                 );
+
+            return View(users.ToList());
+        }
+
+        [HttpPost]
+        [Authorize(Roles = RoleNames.Admin + "," + RoleNames.ProjectManager)]
+        public ActionResult AddDevelopers(int? id, List<string> devIds)
+        {
+            if (id == null)
+                return HttpNotFound();
+
+            //project exists and if manager user on project
+            var project = db.Projects.Find(id);
+            var userId = User.Identity.GetUserId();
+            if (project == null || (User.IsInRole(RoleNames.ProjectManager) && project.ManagerId != userId))
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+
+            foreach(var devId in devIds)
+            {
+                if (db.Users.Find(devId) != null)
+                    db.ProjectDevelopers.Add(new ProjectDeveloper()
+                    {
+                        ProjectId = project.Id,
+                        DeveloperId = devId
+                    });
+                else
+                {
+                    //exclude devs already on project
+                    var users = Utilities.Utilities.GetAllDevelopers(db).Where(model => !(from projectDev in db.ProjectDevelopers
+                                                                                          where projectDev.ProjectId == id
+                                                                                          select projectDev.DeveloperId).Contains(model.Id)
+                                                                                         );
+                    return View(users.ToList());
+                }
+                    
+            }
+
+            db.SaveChanges();
+            return RedirectToAction("Details", new { id = id });
         }
 
         // GET: Projects/Delete/5
@@ -149,6 +231,28 @@ namespace BugTracker.Controllers
                 db.Dispose();
             }
             base.Dispose(disposing);
+        }
+
+        private bool UserOnProject(Project project)
+        {
+            var userId = User.Identity.GetUserId();
+
+            //check if developer is on project
+            if (User.IsInRole(RoleNames.Developer))
+            {
+                var ProjDev = db.ProjectDevelopers.SingleOrDefault(model => model.ProjectId == project.Id
+                && model.DeveloperId == userId);
+
+                if (ProjDev == null)
+                    return false;
+            }
+
+            //check if manager is over project
+            else if (User.IsInRole(RoleNames.ProjectManager) && project.ManagerId != userId)
+                return false;
+
+            //user on project or admin
+            return true;
         }
     }
 }

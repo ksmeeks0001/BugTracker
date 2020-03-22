@@ -6,13 +6,18 @@
     <title>@ViewBag.Title - Issue Tracking</title>
     @Styles.Render("~/Content/css")
     @Scripts.Render("~/bundles/modernizr")
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+    @Scripts.Render("~/bundles/jqueryval")
+
+    @RenderSection("scripts", required: false)
 
 </head>
 <body>
     <div id="navigation-bar">
         @Html.Partial("_NavbarPartial")
     </div>
-    
+
     <div class="container body-content">
         @RenderBody()
         <hr />
@@ -21,16 +26,15 @@
         </footer>
     </div>
 
-    @Scripts.Render("~/bundles/jquery")
-    @Scripts.Render("~/bundles/bootstrap")
-    @RenderSection("scripts", required: false)
+
 </body>
 </html>
 <style>
     .navbar-nav {
         margin-right: 2%;
     }
-    .navbar-nav li {
-        margin-right: 10px;
-    }
+
+        .navbar-nav li {
+            margin-right: 10px;
+        }
 </style>

@@ -25,6 +25,13 @@ namespace BugTracker
             bundles.Add(new StyleBundle("~/Content/css").Include(
                       "~/Content/bootstrap-cyborg.css",
                       "~/Content/site.css"));
+
+            bundles.Add(new ScriptBundle("~/bundles/chosenJs").Include(
+                      "~/Scripts/chosen.jquery.js"));
+
+            bundles.Add(new StyleBundle("~/Content/chosencss").Include(
+                      "~/Content/chosen.css"));
+
         }
     }
 }

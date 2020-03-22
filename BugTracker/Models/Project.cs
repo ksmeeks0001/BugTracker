@@ -26,6 +26,9 @@ namespace BugTracker.Models
 
         [Required]
         public string Details { get; set; }
+
+        [Display(Name = "Date Started")]
+        public DateTime DateStarted { get; set; }
     }
 
     public class ProjectDeveloper

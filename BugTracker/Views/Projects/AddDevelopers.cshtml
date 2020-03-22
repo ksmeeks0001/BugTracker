@@ -1,0 +1,55 @@
+﻿@model List<BugTracker.Models.ApplicationUser>
+@{
+    ViewBag.Title = "AddDevelopers";
+}
+
+@Scripts.Render("~/bundles/chosenJs")
+@Styles.Render("~/Content/chosencss")
+<h4>AddDevelopers</h4>
+
+<form id="userForm"  method="post">
+   
+    <select id="userSelect" name="devIds" data-placeholder="Add users..." class="chosen-select" SelectMode="Multiple" multiple>
+        @foreach (var user in Model)
+        {
+            <option value="@user.Id">@user.UserName</option>
+
+        }
+    </select>
+    
+    <input id="submit" type="submit">
+</form>
+
+<script>
+    $(document).ready(function () {
+        $("#userSelect").val("");
+
+
+        $('.chosen-select').chosen();
+        $.validator.setDefaults({ ignore: ":hidden:not(select)" })
+        $("#userForm").validate({
+            rules: {
+                devIds: {
+                    required: true
+                },
+            },
+            messages:
+            {
+                devIds: {
+                    required: "A user is required"
+                }
+            },
+            errorPlacement: function (error, element) {
+                $("#userSelect-error").text("");
+                error.insertAfter($("#userForm"))
+            }
+
+        });
+        
+    });
+</script>
+<style>
+    #userSelect-error {
+        color: red   
+    }
+</style>

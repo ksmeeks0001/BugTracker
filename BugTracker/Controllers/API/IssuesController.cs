@@ -21,5 +21,6 @@ namespace BugTracker.Controllers.API
 
             return Ok(issue);
         }
+
     }
 }
