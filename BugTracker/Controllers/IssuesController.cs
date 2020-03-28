@@ -7,6 +7,7 @@ using System.Net;
 using System.Web;
 using System.Web.Mvc;
 using BugTracker.Models;
+using BugTracker.Utilities;
 using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.Owin;
 
@@ -19,6 +20,7 @@ namespace BugTracker.Views
         public ActionResult Index()
         {
             var userId = User.Identity.GetUserId();
+            
             if (User.IsInRole(RoleNames.Developer))
             {
                 //all issues assigned to developer
@@ -60,6 +62,7 @@ namespace BugTracker.Views
         {
             
             var userId = User.Identity.GetUserId();
+            
             if (User.IsInRole(RoleNames.Developer))
             {
                 //all issues for all projects where developer is on team
@@ -86,7 +89,7 @@ namespace BugTracker.Views
             if (project == null)
                 return HttpNotFound();
 
-            if (!UserOnProject(project))
+            if (!SharedFunctions.UserOnProject(this.HttpContext, db, project))
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
 
             if (resolved)
@@ -110,12 +113,12 @@ namespace BugTracker.Views
             if (id == null)
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
 
-            Issue issue = db.Issues.Include(model => model.Project.Manager).Single( i => i.Id == id);
+            Issue issue = db.Issues.Include(model => model.Project.Manager).Include(model => model.DeveloperAssigned).Single( i => i.Id == id);
             
             if (issue == null)
                 return HttpNotFound();
             
-            if (!UserOnProject(issue))
+            if (!SharedFunctions.UserOnProject(this.HttpContext, db, issue))
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
 
             return View(issue);
@@ -134,7 +137,7 @@ namespace BugTracker.Views
             if (issue == null)
                 return HttpNotFound();
            
-            if (!UserOnProject(issue))
+            if (!SharedFunctions.UserOnProject(this.HttpContext, db, issue))
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
 
             issue.Resolved = true;
@@ -148,6 +151,8 @@ namespace BugTracker.Views
             if (id == null)
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
 
+            //init issue with for project
+            
             var issue = new Issue()
             {
                 ProjectId = (int)id
@@ -164,7 +169,7 @@ namespace BugTracker.Views
         {
             if (ModelState.IsValid)
             {
-                if (!UserOnProject(issue))
+                if (!SharedFunctions.UserOnProject(this.HttpContext, db, issue))
                     return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
 
                 issue.CreatedById = User.Identity.GetUserId();
@@ -200,7 +205,7 @@ namespace BugTracker.Views
         {
             if (ModelState.IsValid)
             {
-                if (!UserOnProject(issue))
+                if (!SharedFunctions.UserOnProject(this.HttpContext, db, issue))
                     return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
 
                 issue.DateUpdated = DateTime.Today;
@@ -232,7 +237,7 @@ namespace BugTracker.Views
         public ActionResult DeleteConfirmed(int id)
         {
             Issue issue = db.Issues.Find(id);
-            if (!UserOnProject(issue))
+            if (!SharedFunctions.UserOnProject(this.HttpContext, db, issue))
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             
             db.Issues.Remove(issue);
@@ -248,53 +253,27 @@ namespace BugTracker.Views
             return View("Index", db.Issues.Where(model => model.Resolved == true).OrderBy(model => model.DateCreated).ToList());
         }
 
-
-        private bool UserOnProject(Project project)
+        //POST add DeveloperId to assign developer to issue 
+        //needs moved to API controller when probelme is resolved on stack overflow
+        [HttpPost]
+        public ActionResult AssignDeveloper(int IssueId, string DeveloperId)
         {
-            var userId = User.Identity.GetUserId();
+            if (IssueId == null || DeveloperId == null)
+                return HttpNotFound();
 
-            //check if developer is on project
-            if (User.IsInRole(RoleNames.Developer))
-            {
-                var ProjDev = db.ProjectDevelopers.SingleOrDefault(model => model.ProjectId == project.Id
-                && model.DeveloperId == userId);
+            var issue = db.Issues.Find(IssueId);
 
-                if (ProjDev == null)
-                    return false;
-            }
-                
-            //check if manager is over project
-            else if (User.IsInRole(RoleNames.ProjectManager) && project.ManagerId != userId)
-                return false;
+            if (issue == null)
+                return HttpNotFound();
 
-            //user on project or admin
-            return true;
-        }
-        private bool UserOnProject(Issue issue)
-        {
-            //returns false if project does not exist or user not on project
-            if (User.IsInRole(RoleNames.Developer + ',' + RoleNames.ProjectManager))
-            {
-                //if project exists where user is manager or a developer
-                var userId = User.Identity.GetUserId();
-                var projectdev = db.ProjectDevelopers.Where(
-                    model => model.ProjectId == issue.ProjectId &&
-                            (
-                            model.Project.ManagerId == userId
-                         || model.DeveloperId == userId)
-                            );
-                if (projectdev == null)
-                    return false;
-            }
-            //else the user is Admin
-            else
-            {
-                var project = db.Projects.SingleOrDefault(model => model.Id == issue.ProjectId);
-                if (project == null)
-                    return false;
-            }
- 
-            return true;
+            var projDev = db.ProjectDevelopers.Where(model => model.ProjectId == issue.ProjectId && model.DeveloperId == DeveloperId);
+
+            if (projDev == null)
+                return HttpNotFound();
+
+            issue.DeveloperAssignedId = DeveloperId;
+            db.SaveChanges();
+            return Json("");
         }
 
         protected override void Dispose(bool disposing)

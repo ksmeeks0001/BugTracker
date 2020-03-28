@@ -23,11 +23,11 @@ namespace BugTracker.Controllers.API
         public IHttpActionResult GetProjectDeveloper(int id)
         {
             var projectDevelopers = db.ProjectDevelopers.Include(model => model.Developer).Where(model => model.ProjectId == id);
-            if (projectDevelopers == null)
-                return NotFound();
+            
 
             return Ok(projectDevelopers.ToList());
         }
+
 
 
 
@@ -74,9 +74,7 @@ namespace BugTracker.Controllers.API
         public IHttpActionResult PostProjectDeveloper(ProjectDeveloper projectDeveloper)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
             db.ProjectDevelopers.Add(projectDeveloper);
 
@@ -98,6 +96,7 @@ namespace BugTracker.Controllers.API
 
             return CreatedAtRoute("DefaultApi", new { id = projectDeveloper.ProjectId }, projectDeveloper);
         }
+
 
         // DELETE: api/ProjectDevelopers/5
         [ResponseType(typeof(ProjectDeveloper))]

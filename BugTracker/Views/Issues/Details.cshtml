@@ -22,27 +22,41 @@
             <p>
                 @Html.DisplayNameFor(model => model.Project.Manager):
                 <a href="mailto: @Model.Project.Manager.Email?subject=@Model.Project.Name:@Model.Name">
-                    @Html.DisplayFor(model => model.Project.Manager.Email)</a>
+                    @Html.DisplayFor(model => model.Project.Manager.Email)
+                </a>
             </p>
+        </div>
+        <div class="col">
+            @Html.DisplayNameFor(model => model.DeveloperAssigned) :
+            @if (Model.DeveloperAssignedId == null)
+            {
+            <span id="assignDeveloperSection">
+                <button type="button" data-toggle="modal" data-target="#assignDeveloperModal" id="assignDeveloperBtn" class="btn btn-outline-info">Assign a Developer</button>
+            </span>
+            }
+            else
+            {
+                @Html.DisplayFor(model => model.DeveloperAssigned.UserName)
+            }
         </div>
     </div>
     <div class="row">
-    <div class="col-sm-6">
-        <p>
-            @Html.DisplayNameFor(model => model.DateCreated) :
+        <div class="col-sm-6">
+            <p>
+                @Html.DisplayNameFor(model => model.DateCreated) :
 
-            @Html.DisplayFor(model => model.DateCreated)
-        </p>
-    </div>
-    <div class="col-sm-6">
-        <p id="dateUpdated">
-            @if (Model.DateUpdated != null)
-            {
-                @Html.DisplayNameFor(model => model.DateUpdated) <span>:</span>
-                @Html.DisplayFor(model => model.DateUpdated)
-            }
-        </p>
-    </div>
+                @Html.DisplayFor(model => model.DateCreated)
+            </p>
+        </div>
+        <div class="col-sm-6">
+            <p id="dateUpdated">
+                @if (Model.DateUpdated != null)
+                {
+                    @Html.DisplayNameFor(model => model.DateUpdated) <span>:</span>
+                    @Html.DisplayFor(model => model.DateUpdated)
+                }
+            </p>
+        </div>
     </div>
 </div>
 
@@ -110,24 +124,53 @@
         </div>
     </div>
 </div>
+@if (Model.DeveloperAssignedId == null)
+{
+    <div class="modal" id="assignDeveloperModal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Assign Developer</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body form-group">
+                    <select class="form-control" id="assignDeveloperSelect">
+
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="assignDeveloperConfirm">Assign</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 <p>
     @Html.ActionLink("Update", "Edit", new { id = Model.Id }) |
-    @Html.ActionLink("Return to List", "ProjectView", new { id = Model.ProjectId, resolved = false})
+    @Html.ActionLink("Return to List", "ProjectView", new { id = Model.ProjectId, resolved = false })
 </p>
-
+@Html.HiddenFor(model => model.ProjectId)
 <script>
 
     window.onload = function () {
+
+        //vars
+        var projectId = $("#ProjectId").val();
+
 
         //DELETE a note
         deleteNote = function (noteId) {
             $.ajax({
                 url: "/api/notes/" + noteId,
                 type: "DELETE",
-                    success: function(data, status) {
-                        //alert("deleted");
-                        $("#note" + noteId).remove();
-                    }
+                success: function (data, status) {
+                    //alert("deleted");
+                    $("#note" + noteId).remove();
+                }
             });
         }
         confirmDelete = function (noteId) {
@@ -137,7 +180,7 @@
         addNote = function (data) {
             var notes = $("#notes");
             notes.append(
-                "<div id='note" + data.Id +"' class='alert alert-info'>" +
+                "<div id='note" + data.Id + "' class='alert alert-info'>" +
                 "<button type='button' class='close btn btn-danger btn-sm'" +
                 "data-toggle='modal' data-target='#confirmDelete' onclick=confirmDelete(" + data.Id + ")>&times</button > " +
                 "<p>" + new Date(data.DateCreated).toLocaleDateString() + "</p>" +
@@ -145,19 +188,48 @@
                 "</div>"
             );
         }
+
+        //get notes
         $.get("/api/issues/" + $("#Id").val(), function (data, status) {
             //console.log(data);
             for (let i = 0; i < data.Notes.length; i++) {
                 addNote(data.Notes[i]);
-            }                
+            }
         });
+
+        if (document.getElementById("assignDeveloperBtn") != null) {
+            //get developers on project and create form
+            $.get("/api/projectdevelopers/" + projectId, function (data, status) {
+                let selectBox = $("#assignDeveloperSelect");
+                
+                for (let i = 0; i < data.length; i++) {
+                    selectBox.append("<option value='" + data[i].Developer.Id + "'>" + data[i].Developer.UserName + "</option>");
+                }
+
+            });
+
+            $("#assignDeveloperConfirm").click(function () {
+               
+                var formData = {
+                    IssueId:  $("#Id").val(),
+                    DeveloperId: $("#assignDeveloperSelect").val()
+                    
+                };
+                //alert(formData.DeveloperId);
+                $.post("/issues/assigndeveloper/", formData, function () {
+                    $("#assignDeveloperSection").html($("#assignDeveloperSelect").find("option:selected").text());
+
+                });
+
+            });
+        }
 
 
 
         //POST a new note
         $("#submitNote").click(function () {
             var form_data = {
-               // __RequestVerificationToken: $("input[name='__RequestVerificationToken']").val(),
+                // __RequestVerificationToken: $("input[name='__RequestVerificationToken']").val(),
                 Content: $("#Content").val(),
                 IssueId: $("#Id").val()
             };
@@ -169,11 +241,22 @@
                 $("#Content").val("");
             });
         });
-        $(document).ajaxError(function (event, request, settings) {
-            if (settings.url == "api/Notes") {
-                $("#contentValidate").show();
 
+
+
+
+
+        $(document).ajaxError(function (event, request, settings) {
+            if (settings.url == "/api/Notes") {
+                $("#contentValidate").show();
+                alert("failed to post note!");
             }
+            else if (settings.url == "/api/issues")
+                alert("failed to load notes!");
+            else if (settings.url == "/api/projectdevelopers/" + projectId)
+                alert("failed to load developers!");
+            else if (settings.url == "/api/issues/PostDeveloper")
+                alert("Unable to assign developer!");
         })
     }
 </script>
