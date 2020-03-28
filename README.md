@@ -1,10 +1,10 @@
 # BugTracker
-Software Development too for tracking issues.
+Software Development tool for tracking issues.
 
-Admins have ability to send registration request emails to new memeber of the team.
-Create a new software project and assign a manager. 
+As an Administrator, add Project Managers and Developers to your team and create new Development projects.
 
-Project Managers will assign developers to the project. 
+The Project Manager will assign developers to the project and assign a developer to open issues on the project. 
 
-Memebers of the team can then add issues to the project and track progress of resolution by adding notes and assigning the issue
-to a specific developer. 
+All members of the team can add issues to projects in which they are a part of and track progress towards 
+resolution by adding notes to an issue. Issues are marked resolved when completed and removed from the open 
+Issues page.  
