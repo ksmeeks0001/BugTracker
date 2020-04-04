@@ -1,4 +1,5 @@
 ﻿using BugTracker.Models;
+using BugTracker.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +14,7 @@ namespace BugTracker.Controllers.API
     {
         private ApplicationDbContext db = new ApplicationDbContext();
 
+        [HttpDelete]
         public IHttpActionResult DeletePending(int? id)
         {
             if (id == null)
@@ -25,6 +27,24 @@ namespace BugTracker.Controllers.API
             db.PendingRegistrations.Remove(pending);
             db.SaveChanges();
             return Ok();
+        }
+
+        [HttpPost]
+        public IHttpActionResult ResendPendingEmail(int id)
+        {
+            var pending = db.PendingRegistrations.SingleOrDefault(model => model.Id == id);
+            if (pending == null)
+                return BadRequest();
+            try
+            {
+                Email.SendPendingEmail(pending);
+            }
+            catch
+            {
+                return NotFound();
+            }
+            return Ok();
+
         }
 
         protected override void Dispose(bool disposing)

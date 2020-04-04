@@ -26,7 +26,7 @@
 
             @foreach (var item in Model)
             {
-                <tr class="table-secondary">
+                <tr class="table-secondary" id = "@item.Id" >
                     <td>
                         @Html.DisplayFor(modelItem => item.Email)
                     </td>
@@ -34,12 +34,36 @@
                         @Html.DisplayFor(modelItem => item.Role)
                     </td>
                     <td>
-                        @Html.ActionLink("Resend Registration Link", "SendRegistration", "Account")
+                        <button class="btn btn-link resend-btn" value="@item.Id">Resend Registration Email</button>
                     </td>
                     <td>
-                        <button class="btn btn-link">Delete</button>
+                        <button class="btn btn-link delete-btn" value="@item.Id">Delete</button>
                     </td>
                 </tr>
             }
 
         </table>
+<script>
+
+    $(".delete-btn").on("click", deleteClick);
+    $(".resend-btn").on("click", resendClick);
+
+    function deleteClick(e) {
+        var id = e.toElement.value;
+        $.ajax({
+            url: '/api/admin/' + id,
+            type: 'DELETE',
+            success: function (result) {
+                alert("Pending User Removed");
+                $("#" + id).remove();
+            }
+        });
+    }
+
+    function resendClick(e) {
+        var id = e.toElement.value;
+        $.post("/api/admin/" + id, function () {
+            alert("Registation Email Resent");
+        })
+    }
+</script>
