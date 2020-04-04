@@ -15,6 +15,14 @@ namespace BugTracker.Controllers.API
 
         
         [HttpGet]
+        public IQueryable<Issue> GetIssues()
+        {
+            var issues = db.Issues.Where(model => model.Resolved == false);
+            return issues;
+        }
+
+
+        [HttpGet]
         public IHttpActionResult GetNotes(int id)
         {
             Issue issue = db.Issues.Include("Notes").SingleOrDefault(m => m.Id == id);
@@ -25,7 +33,7 @@ namespace BugTracker.Controllers.API
         }
         
 
-        //POST add DeveloperId to assign developer to issue
+        //POST add DeveloperId to assign developer to issue not currently working
         [HttpPost]
         public IHttpActionResult AssignDeveloper([FromBody]int? IssueId,[FromBody] string DeveloperId)
         {

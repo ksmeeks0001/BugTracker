@@ -13,8 +13,6 @@ namespace BugTracker
         {
             routes.IgnoreRoute("{resource}.axd/{*pathInfo}");
 
-
-
             routes.MapRoute(
                 "ProjectIssues",
                 "issues/project/{id}",

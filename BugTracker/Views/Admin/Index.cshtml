@@ -4,47 +4,150 @@
 
     <div class="jumbotron">
         <h3>Admin Page</h3>
+        <p></p>
         <div class="row">
-            <div class="col-md-4">
-                <p></p>
+
+            <div class="col">
+
                 @Html.ActionLink("Add New User", "AddUser", "Account", routeValues: null, htmlAttributes: new { @class = "btn btn-primary bt-lg" })
             </div>
-            <div class="col-md-4">
+            <div class="col">
                 @*Place Holder Button *@
-                <p></p>
-                <a class="btn btn-primary bt-lg" href="">Current Projects</a>
+
+                @Html.ActionLink("Manage Projects", "Index", "Projects", new { }, new { @class = "btn btn-primary bt-lg" })
             </div>
-            <div class="col-md-4">
+            <div class="col">
                 @*Place Holder Button *@
-                <p></p>
-                <a class="btn btn-primary bt-lg" href="">Start Project</a>
+
+                @Html.ActionLink("Start New Project", "Create", "Projects", new { }, new { @class = "btn btn-primary bt-lg" })
             </div>
         </div>
     </div>
 
 <div class="row">
     <div class="col-md-4">
-        <h2>Getting started</h2>
-        <p>
-            ASP.NET MVC gives you a powerful, patterns-based way to build dynamic websites that
-            enables a clean separation of concerns and gives you full control over markup
-            for enjoyable, agile development.
-        </p>
-        <p><a class="btn btn-default" href="https://go.microsoft.com/fwlink/?LinkId=301865">Learn more &raquo;</a></p>
+        <h2>Issues</h2>
+        <div>
+            <canvas id="issueBar" width="400" height="400"></canvas>
+        </div>
+        <p><a class="btn btn-default" href=@Url.Action("Index", "Issues")>go to issues &raquo;</a></p>
     </div>
-    <div class="col-md-4">
-        <h2>Get more libraries</h2>
-        <p>NuGet is a free Visual Studio extension that makes it easy to add, remove, and update libraries and tools in Visual Studio projects.</p>
-        <p><a class="btn btn-default" href="https://go.microsoft.com/fwlink/?LinkId=301866">Learn more &raquo;</a></p>
+    <div class="col-md-8">
+        <h2>Resolution Rate</h2>
+        <div>
+            <canvas id="resolutionGraph" ></canvas>
+        </div>
+        
     </div>
-    <div class="col-md-4">
-        <h2>Web Hosting</h2>
-        <p>You can easily find a web hosting company that offers the right mix of features and price for your applications.</p>
-        <p><a class="btn btn-default" href="https://go.microsoft.com/fwlink/?LinkId=301867">Learn more &raquo;</a></p>
-    </div>
+
 </div>
 <style>
     .jumbotron .btn {
-        
     }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js" integrity="sha256-R4pqcOYV8lt7snxMQO/HSbVCFRPMdrhAFMH+vr9giYI=" crossorigin="anonymous"></script>
+<script>
+    var highPriority = 0;
+    var midPriority = 0;
+    var lowPriority = 0;
+    var year = new Date().getYear() + 1900;
+    $.get("/api/issues", function (data) {
+        for (var i = 0; i < data.length; i++)
+        {
+            switch (data[i].Priority)
+            {
+                case 1:
+                    highPriority += 1;
+                    break;
+                case 2:
+                    midPriority += 1;
+                    break;
+                case 3:
+                    lowPriority += 1;
+            }
+        }
+
+       var issueBar = document.getElementById('issueBar').getContext('2d');
+        var graph = new Chart(issueBar, {
+            type: 'bar',
+            data: {
+                labels: ['High','Mid', 'Low', ],
+                datasets: [{
+                    label: 'Count',
+                    data: [highPriority, midPriority, lowPriority],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(255, 159, 64, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(255, 159, 64, 1)',
+                        'rgba(153, 102, 255, 1)',
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero: true
+                        }
+                    }]
+                }
+            }
+        });
+
+    });
+    $.get("/api/resolved/" + year, function (data) {
+        console.log(data);
+        let days;
+        let createdDate;
+        let index;
+        let resolutionTime = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let counts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        //calculate average resolution time per month
+        for (let i = 0; i < data.length; i++) {
+            createdDate = new Date(data[i].DateCreated);
+            index = createdDate.getMonth();
+            days = (new Date(data[i].DateUpdated).getTime()
+                - createdDate.getTime())/1000/60/60/24;
+
+            resolutionTime[index] += days;
+            counts[index] += 1;
+            console.log(days);           
+        }
+        for (let i = 0; i < 12; i++) {
+            resolutionTime[i] = resolutionTime[i] / counts[i];
+        }
+   
+        //fix this! Want to show time it takes to resolve an issue
+        var resolutionGraph = document.getElementById('resolutionGraph').getContext('2d');
+        var myLineChart = new Chart(resolutionGraph, {
+            type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' ],
+                    datasets: [{
+                        label: 'Average Days to Resolution',
+                        data: resolutionTime,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.2)',
+                            'rgba(255, 159, 64, 0.2)',
+                            'rgba(153, 102, 255, 0.2)',
+
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(255, 159, 64, 1)',
+                            'rgba(153, 102, 255, 1)',
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+            options: {}
+        });
+    });
+</script>

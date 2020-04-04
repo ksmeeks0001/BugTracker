@@ -184,6 +184,7 @@
     <Compile Include="Controllers\API\NotesController.cs" />
     <Compile Include="Controllers\API\ProjectDevelopersController.cs" />
     <Compile Include="Controllers\API\ProjectsController.cs" />
+    <Compile Include="Controllers\API\ResolvedController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\ManageController.cs" />
     <Compile Include="Controllers\ProjectsController.cs" />
