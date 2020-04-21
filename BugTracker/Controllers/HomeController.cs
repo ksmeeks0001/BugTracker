@@ -9,25 +9,31 @@ using System.Web.Mvc;
 
 namespace BugTracker.Controllers
 {
-    [Authorize]
+    
     public class HomeController : Controller
     {
         private ApplicationDbContext db = new ApplicationDbContext();        
 
         public ActionResult Index()
         {
-            //example how to get user data
-            var UserManager = Request.GetOwinContext().GetUserManager<ApplicationUserManager>();
-            var roles = UserManager.GetRoles(User.Identity.GetUserId());
-            foreach (var role in roles)
-            {
-                if (role == RoleNames.Admin)
-                    return RedirectToAction("Index","Admin");
-            }
-            return View(); 
+
+            if (User.IsInRole(RoleNames.Admin))
+                return RedirectToAction("Index", "Admin");
+
+            else if (User.Identity.IsAuthenticated)
+                return View();
+
+            //if user is not logged in
+            else return RedirectToAction("LandingPage");
         }
 
+        public ActionResult LandingPage()
+        {
+            
+            return View();
+        }
 
+        [Authorize]
         public ActionResult Help()
         {
             ViewBag.Message = "This is the help page.";
@@ -35,11 +41,6 @@ namespace BugTracker.Controllers
             return View();
         }
 
-        public ActionResult Contact()
-        {
-            ViewBag.Message = "Your contact page.";
 
-            return View();
-        }
     }
 }

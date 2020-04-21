@@ -11,20 +11,22 @@ namespace BugTracker.Utilities
     {
         
         
-        public static IQueryable<ApplicationUser> GetAllManagers(ApplicationDbContext db)
+        public static IQueryable<ApplicationUser> GetAllManagers(ApplicationDbContext db, int organizationId)
         {
             string manRoleId = (db.Roles.SingleOrDefault(r => r.Name == RoleNames.ProjectManager)).Id;
             var managers = from user in db.Users
-                           where user.Roles.Any(r => r.RoleId == manRoleId)
+                           where user.OrganizationId == organizationId
+                           && user.Roles.Any(r => r.RoleId == manRoleId)
                            select user;
             return managers;
         }
 
-        public static IQueryable<ApplicationUser> GetAllDevelopers(ApplicationDbContext db)
+        public static IQueryable<ApplicationUser> GetAllDevelopers(ApplicationDbContext db, int organizationId)
         {
             string devRoleId = (db.Roles.SingleOrDefault(r => r.Name == RoleNames.Developer)).Id;
             var developers = from user in db.Users
-                             where user.Roles.Any(r => r.RoleId == devRoleId)
+                             where user.OrganizationId == organizationId
+                             && user.Roles.Any(r => r.RoleId == devRoleId)
                              select user;
             return developers;
         }
@@ -47,7 +49,11 @@ namespace BugTracker.Utilities
             else if (HttpContext.User.IsInRole(RoleNames.ProjectManager) && project.ManagerId != userId)
                 return false;
 
-            //user on project or admin
+            //admin not in project organization
+            else if (HttpContext.User.IsInRole(RoleNames.Admin) && project.OrganizationId != db.Users.Find(userId).OrganizationId)
+                return false;
+
+            //user on project
             return true;
         }
 
@@ -71,10 +77,20 @@ namespace BugTracker.Utilities
                 if (issue.Project.ManagerId != userId)
                     return false;
             }
+
             //else the user is Admin
-            else
+            else if (HttpContext.User.IsInRole(RoleNames.Admin))
             {
-                return true;
+                var organizationId = db.Users.Find(HttpContext.User.Identity.GetUserId()).OrganizationId;
+                if (issue.Project == null)
+                {
+                    var project = db.Projects.Find(issue.ProjectId);
+                    if (project.OrganizationId != organizationId)
+                        return false;
+                }
+                else if (issue.Project.OrganizationId != organizationId)
+                    return false;
+                    
             }
 
             return true;

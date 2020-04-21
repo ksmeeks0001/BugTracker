@@ -14,7 +14,7 @@ namespace BugTracker.Validation
         protected override ValidationResult IsValid
                   (object value, ValidationContext validationContext)
         {
-            var registering = (RegisterViewModel)validationContext.ObjectInstance;
+            var registering = (UserRegisterViewModel)validationContext.ObjectInstance;
             var pending = db.PendingRegistrations.SingleOrDefault(p => p.Email == registering.Email);
             if (pending != null)
                 return ValidationResult.Success;

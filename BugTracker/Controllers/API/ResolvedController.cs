@@ -1,4 +1,5 @@
 ﻿using BugTracker.Models;
+using Microsoft.AspNet.Identity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,11 +15,12 @@ namespace BugTracker.Controllers.API
 
         //get resolved issues for given year
         [HttpGet]
-        public IQueryable<Issue> Get(int id)
+        public List<Issue> Get(int id)
         {
+            var user = db.Users.Find(User.Identity.GetUserId());
             var issues = db.Issues.Where(model => model.Resolved == true 
-                && model.DateCreated.Year == id);
-            return issues;
+                && model.DateCreated.Year == id && model.Project.OrganizationId == user.OrganizationId);
+            return issues.ToList();
         }
     }
 }

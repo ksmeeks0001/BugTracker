@@ -49,8 +49,10 @@ namespace BugTracker.Views
             else
             {
                 //user is Admin all open issues
+                var organizationId = db.Users.Find(User.Identity.GetUserId()).OrganizationId;
+
                 var issues = db.Issues.Include(model => model.Project).
-                    Where(model => model.Resolved == false).OrderBy(model => model.DateCreated);
+                    Where(model => model.Resolved == false && model.Project.OrganizationId == organizationId).OrderBy(model => model.DateCreated);
                 ViewBag.Title = "All Open Issues";
                 return View(issues);
             }
@@ -250,7 +252,9 @@ namespace BugTracker.Views
         public ActionResult Resolved()
         {
             ViewBag.Resolved = true;
-            return View("Index", db.Issues.Where(model => model.Resolved == true).OrderBy(model => model.DateCreated).ToList());
+            var organizationId = db.Users.Find(User.Identity.GetUserId()).OrganizationId;
+            return View("Index", db.Issues.Where(model => model.Resolved == true && model.Project.OrganizationId == organizationId)
+                .OrderBy(model => model.DateCreated).ToList());
         }
 
         //POST add DeveloperId to assign developer to issue 
@@ -258,7 +262,7 @@ namespace BugTracker.Views
         [HttpPost]
         public ActionResult AssignDeveloper(int IssueId, string DeveloperId)
         {
-            if (IssueId == null || DeveloperId == null)
+            if (DeveloperId == null)
                 return HttpNotFound();
 
             var issue = db.Issues.Find(IssueId);

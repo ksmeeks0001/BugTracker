@@ -11,6 +11,9 @@ using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin;
 using Microsoft.Owin.Security;
 using BugTracker.Models;
+using System.IO;
+using System.Net.Mail;
+using System.Net;
 
 namespace BugTracker
 {
@@ -18,7 +21,30 @@ namespace BugTracker
     {
         public Task SendAsync(IdentityMessage message)
         {
-            // Plug in your email service here to send an email.
+            const string PassPath = @"C:\Users\kevsm\source\repos\BugTracker\BugTracker\Utilities\confidential.txt";
+            const string SmtpHost = "smtp.gmail.com";
+            const int SmtpPort = 587;
+            const string Username = "ksmeeks0001@gmail.com";
+            const string SendingAddress = "bugtrackingsoftware@gmail.com";
+
+            string password;
+            using (StreamReader sr = new StreamReader(PassPath))
+            {
+                password = sr.ReadLine();
+            }
+            SmtpClient client = new SmtpClient(SmtpHost, SmtpPort);
+            client.Credentials = new NetworkCredential(Username, password);
+            client.EnableSsl = true;
+            MailMessage msg = new MailMessage()
+            {
+                From = new MailAddress(SendingAddress),
+                Subject = message.Subject,
+                Body = message.Body
+            };
+            msg.To.Add(message.Destination);
+
+            client.Send(msg);
+
             return Task.FromResult(0);
         }
     }

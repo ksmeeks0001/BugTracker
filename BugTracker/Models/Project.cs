@@ -15,6 +15,11 @@ namespace BugTracker.Models
         [Display(Name = "Project Name")]
         public string Name { get; set; }
 
+        [Required]
+        public int OrganizationId { get; set; }
+        [ForeignKey("OrganizationId")]
+        public Organization Organization { get; set; }
+
         public string ManagerId { get; set; }
         [ForeignKey("ManagerId")]
         public ApplicationUser Manager { get; set; }

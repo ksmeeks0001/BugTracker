@@ -42,8 +42,10 @@ namespace BugTracker.Controllers
                     .Include(p => p.Issues);
                 return View("ManagerIndex", projects.ToList());
             }
+            //else admin
+            var user = db.Users.Find(User.Identity.GetUserId());
             projects = db.Projects.Include(p => p.Issues).Include(p => p.Manager)
-                .Where(p => p.Complete == false);    
+                .Where(p => p.Complete == false && p.OrganizationId == user.OrganizationId);    
             return View("AdminIndex",projects.ToList());
         }
 
@@ -68,7 +70,8 @@ namespace BugTracker.Controllers
         {
 
             //get Role = Project Manager
-            var managers = SharedFunctions.GetAllManagers(db);
+            var organizationId = db.Users.Find(User.Identity.GetUserId()).OrganizationId;
+            var managers = SharedFunctions.GetAllManagers(db, organizationId);
 
             ViewBag.ManagerId = new SelectList(managers, "Id", "UserName"); 
 
@@ -85,11 +88,13 @@ namespace BugTracker.Controllers
             {
                 project.DateStarted = DateTime.Today;
                 project.Complete = false;
+                project.OrganizationId = db.Users.Find(User.Identity.GetUserId()).OrganizationId;
                 db.Projects.Add(project);
                 db.SaveChanges();
                 return RedirectToAction("Details", new { id = project.Id });
             }
-            var managers = SharedFunctions.GetAllManagers(db);
+            var organizationId = db.Users.Find(User.Identity.GetUserId()).OrganizationId;
+            var managers = SharedFunctions.GetAllManagers(db, organizationId);
             ViewBag.ManagerId = new SelectList(managers, "Id", "Email", project.ManagerId);
             return View(project);
         }
@@ -106,7 +111,8 @@ namespace BugTracker.Controllers
             if (project == null)
                 return HttpNotFound();
 
-            var managers = SharedFunctions.GetAllManagers(db);
+            var organizationId = db.Users.Find(User.Identity.GetUserId()).OrganizationId;
+            var managers = SharedFunctions.GetAllManagers(db, organizationId);
             ViewBag.ManagerId = new SelectList(managers, "Id", "Email", project.ManagerId);
             return View(project);
         }
@@ -119,11 +125,14 @@ namespace BugTracker.Controllers
         {
             if (ModelState.IsValid)
             {
+                var organizationTemp = project.OrganizationId;
                 db.Entry(project).State = EntityState.Modified;
+                project.OrganizationId = organizationTemp;
                 db.SaveChanges();
                 return RedirectToAction("Index");
             }
-            var managers = SharedFunctions.GetAllManagers(db);
+            var organizationId = db.Users.Find(User.Identity.GetUserId()).OrganizationId;
+            var managers = SharedFunctions.GetAllManagers(db, organizationId);
             ViewBag.ManagerId = new SelectList(managers, "Id", "Email", project.ManagerId);
             return View(project);
         }
@@ -138,10 +147,8 @@ namespace BugTracker.Controllers
             if (project == null)
                 return HttpNotFound();
 
-            var userId = User.Identity.GetUserId();
-
-            if (User.IsInRole(RoleNames.ProjectManager) && project.ManagerId != userId )
-                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            if (!SharedFunctions.UserOnProject(this.HttpContext, db, project))
+                return HttpNotFound();
 
             project.Complete = true;
             db.SaveChanges();
@@ -154,10 +161,11 @@ namespace BugTracker.Controllers
             if (id == null)
                 return HttpNotFound();
 
+            var organizationId = db.Users.Find(User.Identity.GetUserId()).OrganizationId;
             //exclude devs already on project
-            var users = SharedFunctions.GetAllDevelopers(db).Where(model => !(from projectDev in db.ProjectDevelopers
-                                                                                 where projectDev.ProjectId == id
-                                                                                 select projectDev.DeveloperId).Contains(model.Id)
+            var users = SharedFunctions.GetAllDevelopers(db, organizationId).Where(model =>  (from projectDev in db.ProjectDevelopers
+                                                                              where projectDev.ProjectId == id
+                                                                              select projectDev.DeveloperId).Contains(model.Id)
                                                                                  );
 
             return View(users.ToList());
@@ -172,8 +180,8 @@ namespace BugTracker.Controllers
 
             //project exists and if manager user on project
             var project = db.Projects.Find(id);
-            var userId = User.Identity.GetUserId();
-            if (project == null || (User.IsInRole(RoleNames.ProjectManager) && project.ManagerId != userId))
+
+            if (!SharedFunctions.UserOnProject(this.HttpContext, db, project))
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
 
             //verify all users exist and are developers
@@ -196,8 +204,9 @@ namespace BugTracker.Controllers
             }     
             else
             {
-                    //exclude devs already on project
-                 var users = SharedFunctions.GetAllDevelopers(db).Where(model => !(from projectDev in db.ProjectDevelopers
+                //exclude devs already on project
+                var organizationId = db.Users.Find(User.Identity.GetUserId()).OrganizationId;
+                var users = SharedFunctions.GetAllDevelopers(db, organizationId).Where(model => !(from projectDev in db.ProjectDevelopers
                                                                                where projectDev.ProjectId == id
                                                                                select projectDev.DeveloperId).Contains(model.Id));
 
@@ -217,7 +226,11 @@ namespace BugTracker.Controllers
             
             if (project == null)
                 return HttpNotFound();
-            
+
+            var organizationId = db.Users.Find(User.Identity.GetUserId()).OrganizationId;
+            if (project.OrganizationId != organizationId)
+                return HttpNotFound();
+
             return View(project);
         }
 
@@ -228,6 +241,11 @@ namespace BugTracker.Controllers
         public ActionResult DeleteConfirmed(int id)
         {
             Project project = db.Projects.Find(id);
+            
+            var organizationId = db.Users.Find(User.Identity.GetUserId()).OrganizationId;
+            if (project.OrganizationId != organizationId)
+                return HttpNotFound();
+            
             db.Projects.Remove(project);
             db.SaveChanges();
             return RedirectToAction("Index");

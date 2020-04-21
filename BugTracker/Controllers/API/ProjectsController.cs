@@ -13,6 +13,7 @@ using Microsoft.AspNet.Identity;
 
 namespace BugTracker.Controllers.API
 {
+    [Authorize]
     public class ProjectsController : ApiController
     {
         private ApplicationDbContext db = new ApplicationDbContext();
@@ -20,7 +21,8 @@ namespace BugTracker.Controllers.API
         // GET: api/Projects
         public IQueryable<Project> GetProjects()
         {
-            return db.Projects;
+            var organizationId = db.Users.Find(User.Identity.GetUserId()).OrganizationId;
+            return db.Projects.Where(model => model.OrganizationId == organizationId);
         }
 
         // GET: api/Projects/5
@@ -65,11 +67,6 @@ namespace BugTracker.Controllers.API
             base.Dispose(disposing);
         }
 
-        private bool ProjectExists(int id)
-        {
-            return db.Projects.Count(e => e.Id == id) > 0;
-        }
-
         private bool UserOnProject(Project project)
         {
             var userId = User.Identity.GetUserId();
@@ -88,7 +85,13 @@ namespace BugTracker.Controllers.API
             else if (User.IsInRole(RoleNames.ProjectManager) && project.ManagerId != userId)
                 return false;
 
-            //user on project or admin
+            else if (User.IsInRole(RoleNames.Admin))
+            {
+                var organizationId = db.Users.Find(User.Identity.GetUserId()).OrganizationId;
+                if (project.OrganizationId != organizationId)
+                    return false;
+            }
+            //user on project
             return true;
         }
     }

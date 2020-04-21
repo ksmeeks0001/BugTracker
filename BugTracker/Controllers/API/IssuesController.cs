@@ -1,10 +1,12 @@
 ﻿using BugTracker.Models;
+using Microsoft.AspNet.Identity;
 using System;
 using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 using System.Web.Http;
 
 namespace BugTracker.Controllers.API
@@ -15,10 +17,12 @@ namespace BugTracker.Controllers.API
 
         
         [HttpGet]
-        public IQueryable<Issue> GetIssues()
+        public List<Issue> GetIssues()
         {
-            var issues = db.Issues.Where(model => model.Resolved == false);
-            return issues;
+            var user = db.Users.Find(User.Identity.GetUserId());
+            var issues = db.Issues.Where(model => model.Resolved == false && 
+                model.Project.OrganizationId == user.OrganizationId);
+            return issues.ToList();
         }
 
 

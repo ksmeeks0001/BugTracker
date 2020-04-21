@@ -137,6 +137,56 @@ namespace BugTracker.Controllers
             }
         }
 
+        // GET: /Account/Register
+        [AllowAnonymous]
+        public ActionResult OrganizationRegister()
+        {
+
+            return View();
+        }
+
+        //
+        // POST: /Account/Register
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        public async Task<ActionResult> OrganizationRegister(OrganizationRegisterViewModel model)
+        {
+            //Add organization and create User as Admin
+            if (ModelState.IsValid)
+            {
+                var organization = new Organization()
+                {
+                    Name = model.Name,
+                    DateJoined = DateTime.Today
+                };
+                db.Organizations.Add(organization);
+                
+                var user = new ApplicationUser { UserName = model.Email, Email = model.Email, Organization = organization };
+                var result = await UserManager.CreateAsync(user, model.Password);
+                if (result.Succeeded)
+                {
+                    //Make user Admin
+                    UserManager.AddToRole(user.Id, RoleNames.Admin);
+                    await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
+
+                    db.SaveChanges();
+                    // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
+                    // Send an email with this link
+                    // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
+                    // var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
+                    // await UserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking <a href=\"" + callbackUrl + "\">here</a>");
+
+                    return RedirectToAction("Index", "Home");
+                }
+                AddErrors(result);
+            }
+
+            // If we got this far, something failed, redisplay form
+
+            return View(model);
+        }
+
         [Authorize(Roles =RoleNames.Admin)]
         public ActionResult AddUser()
         {
@@ -154,11 +204,12 @@ namespace BugTracker.Controllers
         {
             if (ModelState.IsValid)
             {
-                
+                var organizationId = db.Users.Find(User.Identity.GetUserId()).OrganizationId;
                 var pending = new PendingRegistration()
                 {
                     Email = model.Email,
-                    Role = model.Role
+                    Role = model.Role,
+                    OrganizationId = organizationId
                 };
                 db.PendingRegistrations.Add(pending);
                 db.SaveChanges();
@@ -168,6 +219,7 @@ namespace BugTracker.Controllers
             model.RoleOptions = db.Roles.ToList();
             return View(model);
         }
+
 
         // GET: /Account/Register
         [AllowAnonymous]
@@ -182,18 +234,24 @@ namespace BugTracker.Controllers
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Register(RegisterViewModel model)
+        public async Task<ActionResult> Register(UserRegisterViewModel model)
         {
             if (ModelState.IsValid)
             {
-                var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
+                var pending = db.PendingRegistrations.Single(p => p.Email == model.Email);
+                var user = new ApplicationUser
+                {
+                    UserName = model.Email,
+                    Email = model.Email,
+                    OrganizationId = pending.OrganizationId
+                };
                 var result = await UserManager.CreateAsync(user, model.Password);
                 if (result.Succeeded)
                 {
                     await SignInManager.SignInAsync(user, isPersistent:false, rememberBrowser:false);
-                    //remove the user from pending users
-                    var pending = db.PendingRegistrations.Single(p => p.Email == user.Email);
+                    
                     UserManager.AddToRole(user.Id, pending.Role);
+                    //remove the user from pending users
                     db.PendingRegistrations.Remove(pending);
                     db.SaveChanges();
                     // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
@@ -212,8 +270,10 @@ namespace BugTracker.Controllers
             return View(model);
         }
 
+
         //
         // GET: /Account/ConfirmEmail
+        /*
         [AllowAnonymous]
         public async Task<ActionResult> ConfirmEmail(string userId, string code)
         {
@@ -224,7 +284,7 @@ namespace BugTracker.Controllers
             var result = await UserManager.ConfirmEmailAsync(userId, code);
             return View(result.Succeeded ? "ConfirmEmail" : "Error");
         }
-
+        */
         //
         // GET: /Account/ForgotPassword
         [AllowAnonymous]
@@ -243,7 +303,7 @@ namespace BugTracker.Controllers
             if (ModelState.IsValid)
             {
                 var user = await UserManager.FindByNameAsync(model.Email);
-                if (user == null || !(await UserManager.IsEmailConfirmedAsync(user.Id)))
+                if (user == null)
                 {
                     // Don't reveal that the user does not exist or is not confirmed
                     return View("ForgotPasswordConfirmation");
@@ -251,10 +311,10 @@ namespace BugTracker.Controllers
 
                 // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
                 // Send an email with this link
-                // string code = await UserManager.GeneratePasswordResetTokenAsync(user.Id);
-                // var callbackUrl = Url.Action("ResetPassword", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);		
-                // await UserManager.SendEmailAsync(user.Id, "Reset Password", "Please reset your password by clicking <a href=\"" + callbackUrl + "\">here</a>");
-                // return RedirectToAction("ForgotPasswordConfirmation", "Account");
+                 string code = await UserManager.GeneratePasswordResetTokenAsync(user.Id);
+                 var callbackUrl = Url.Action("ResetPassword", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);		
+                 await UserManager.SendEmailAsync(user.Id, "Reset Password", "Please reset your password by clicking <a href=\"" + callbackUrl + "\">here</a>");
+                 return RedirectToAction("ForgotPasswordConfirmation", "Account");
             }
 
             // If we got this far, something failed, redisplay form

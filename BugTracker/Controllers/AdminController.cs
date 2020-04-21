@@ -1,4 +1,5 @@
 ﻿using BugTracker.Models;
+using Microsoft.AspNet.Identity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,10 +21,12 @@ namespace BugTracker.Controllers
 
         public ActionResult PendingUsers()
         {
-            var pending = db.PendingRegistrations.ToList();
+            var organizationId = db.Users.Find(User.Identity.GetUserId()).OrganizationId;
+            var pending = db.PendingRegistrations.Where(model => model.OrganizationId == organizationId).ToList();
             return View(pending);
         }
-
+        
+        
         protected override void Dispose(bool disposing)
         {
             if (disposing)
